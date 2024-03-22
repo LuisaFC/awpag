@@ -1,7 +1,9 @@
 package com.algaworks.awpag.api.controller;
 
+import com.algaworks.awpag.domain.exception.NegocioException;
 import com.algaworks.awpag.domain.model.Cliente;
 import com.algaworks.awpag.domain.repository.ClienteRepository;
+import com.algaworks.awpag.domain.service.CadastroClienteService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.validation.Valid;
@@ -21,39 +23,41 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/clientes")
 public class ClienteController {
+
+    private final CadastroClienteService cadastroClienteService;
     private final ClienteRepository clienteRepository;
 
-
-    //Quando bater no caminho /clientes irá rodar o método listar
     @GetMapping
-    public List<Cliente> listar(){
+    public List<Cliente> listar() {
         return clienteRepository.findAll();
     }
 
     @GetMapping("/{clienteId}")
     public ResponseEntity<Cliente> buscar(@PathVariable Long clienteId) {
-        //Optional -> Pode ter algo ou estar vazio
         Optional<Cliente> cliente = clienteRepository.findById(clienteId);
 
-        //manipulado status de resposta
-        return cliente.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        if (cliente.isPresent()) {
+            return ResponseEntity.ok(cliente.get());
+        }
 
+        return ResponseEntity.notFound().build();
     }
 
-    @ResponseStatus(HttpStatus.CREATED) //definindo status http
+    @ResponseStatus(HttpStatus.CREATED)
     @PostMapping
     public Cliente adicionar(@Valid @RequestBody Cliente cliente) {
-        return clienteRepository.save(cliente);
+        return cadastroClienteService.salvar(cliente);
     }
 
     @PutMapping("/{clienteId}")
-    public ResponseEntity<Cliente> atualizar(@PathVariable Long clienteId, @Valid @RequestBody Cliente cliente) {
+    public ResponseEntity<Cliente>atualizar(@PathVariable Long clienteId,
+                                             @Valid @RequestBody Cliente cliente) {
         if (!clienteRepository.existsById(clienteId)) {
             return ResponseEntity.notFound().build();
         }
 
         cliente.setId(clienteId);
-        cliente = clienteRepository.save(cliente);
+        cliente = cadastroClienteService.salvar(cliente);
 
         return ResponseEntity.ok(cliente);
     }
@@ -61,12 +65,17 @@ public class ClienteController {
     @DeleteMapping("/{clienteId}")
     public ResponseEntity<Void> excluir(@PathVariable Long clienteId) {
         if (!clienteRepository.existsById(clienteId)) {
-            // Se nao existir entao retorna not found
             return ResponseEntity.notFound().build();
         }
 
-        clienteRepository.deleteById(clienteId);
+        cadastroClienteService.excluir(clienteId);
 
         return ResponseEntity.noContent().build();
     }
+
+    @ExceptionHandler(NegocioException.class)
+    public ResponseEntity<String> capturar(NegocioException e) {
+        return ResponseEntity.badRequest().body(e.getMessage());
+    }
+
 }
