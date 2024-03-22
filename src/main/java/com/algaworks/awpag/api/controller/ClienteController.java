@@ -35,11 +35,8 @@ public class ClienteController {
         Optional<Cliente> cliente = clienteRepository.findById(clienteId);
 
         //manipulado status de resposta
-        if (cliente.isPresent()) {
-            return ResponseEntity.ok(cliente.get());
-        }
+        return cliente.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
 
-        return ResponseEntity.notFound().build();
     }
 
     @ResponseStatus(HttpStatus.CREATED) //definindo status http
@@ -63,6 +60,7 @@ public class ClienteController {
     @DeleteMapping("/{clienteId}")
     public ResponseEntity<Void> excluir(@PathVariable Long clienteId) {
         if (!clienteRepository.existsById(clienteId)) {
+            // Se nao existir entao retorna not found
             return ResponseEntity.notFound().build();
         }
 
